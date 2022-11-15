@@ -42,8 +42,6 @@ int main (int argc, char * argv[])
        /*get first option */
        int option = getopt(argc,argv,"vaN");
         
-       start_windowing();
-       
        /* parse options */
        while(option != -1) 
        {
@@ -82,16 +80,15 @@ int main (int argc, char * argv[])
        if(*errptr)        
        {
                MODE = 1;
-               printf("HOSTNAME = %s\n",argv[optind]);
                host = argv[optind];
                port = strtol(argv[optind+1],NULL,DECIMAL);
-               client();
+               client(argv[1]);
        }
 
        else
        {
                port = strtol(argv[optind],NULL,DECIMAL);
-               server();     
+               server(argv[1]);     
        }
        
        return 0;

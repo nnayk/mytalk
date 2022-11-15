@@ -13,7 +13,8 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <poll.h>
-#include "safeSys.h"
+#include <pwd.h>
+#include "safeIO.h"
 #include "talk.h"
 
 /* macros, if any */
@@ -21,19 +22,26 @@
 #define MAXLEN 1000 /* max message length */
 #define LOCAL 0 /* index of local fd */
 #define REMOTE (LOCAL+1) /* index of local fd */
+#define RESPONSE 4
+#define V_OPT 1 << 0
+#define A_OPT 1 << 1
+#define N_OPT 1 << 2
 
 /* function prototypes */
+int proposeConnection();
+int approveConnection(char *);
 
 /* global vars, if any */
 extern int port;
+extern uint8_t options;
 
 /* main function */
-void server()
+void server(char *hostname)
 {
         struct sockaddr_in sa;
-        ssize_t len;
         int serverSock, talkSock;
         char buff[MAXLEN+1]={0};
+        int connRequest = 1;
         /*char *message = "Hello client\n";*/
         struct pollfd fds[REMOTE+1];
         fds[LOCAL].fd = STDIN_FILENO;
@@ -47,24 +55,42 @@ void server()
         sa.sin_family = AF_INET;
         sa.sin_port = htons(port);
         sa.sin_addr.s_addr = htonl(INADDR_ANY);
-        bind(serverSock,(struct sockaddr *)&sa,sizeof(sa));
+        safeBind(serverSock,(struct sockaddr *)&sa,sizeof(sa));
 
         safeListen(serverSock,DEFAULT_BACKLOG);
 
-        /*printf("DONE LISTENING\n");*/
-
         talkSock = safeAccept(serverSock,NULL,NULL);
+        if(!(options & A_OPT)) connRequest = proposeConnection(hostname);
+
+        if(connRequest)
+        {
+                buff[0] =  'o';
+                buff[1] =  'k';
+                buff[2] =  '\0';
+                if(!(options & N_OPT)) start_windowing();
+
+        }
+
+        else
+        {
+                buff[0] = 'n';
+                buff[1] = 'o';
+                buff[2] = '\0';
+        }
+
+        safeSend(talkSock,buff,strlen(buff),0);
+
+        if(!connRequest)
+        {
+                close(serverSock);
+                close(talkSock);
+                return;
+        }
+
         fds[REMOTE].fd = talkSock;
         
+        communicate(fds,talkSock,buff);
         /*
-        printf("MESSAGE = %s\n",message);
-        len = safeRecv(talkSock,buff,sizeof(buff),0);
-        printf("RECEIVED %s %d\n",buff,(int)len);
-        len = safeWrite(STDOUT_FILENO,buff,(int)len);
-        
-        len = safeSend(talkSock,message,strlen(message),0);
-        */
-
         do
         {
                 poll(fds,sizeof(fds)/sizeof(struct pollfd),-1);
@@ -72,26 +98,82 @@ void server()
                 {
                         update_input_buffer();
                         
-                        if(has_whole_line())
+
+                        while(has_whole_line())
                         {
-                                /*printf("WRITING LINE\n");*/
+                                printf("WRITING LINE\n");
                                 len = read_from_input(buff,MAXLEN);
+                                printf("DONE WRITING\n");
+                                if(len==ERR)
+                                {
+                                        perror("read_from_input");
+                                        exit(EXIT_FAILURE);
+                                }
                                 len = safeSend(talkSock,buff,len,0);
+                                
+                                if(options & N_OPT) break;
                         }
+
                         
+                        if(has_hit_eof())
+                        {
+                                buff[0]='\n';
+                                buff[1]='\0';
+                                safeSend(talkSock,buff,strlen(buff),0);
+                                if(!(options & N_OPT)) stop_windowing();
+                                break;
+                        }
                 }
 
                 if(fds[REMOTE].revents & POLLIN)
                 {
                         len = safeRecv(talkSock,buff,sizeof(buff),0);
+                        if(!len)
+                        {
+                                printf("GOT NOTHING\n");
+                                terminateMsg();
+                                pause();
+                                break;
+                        }
                         buff[len]='\0';
-                        write_to_output(buff,len);
+                        if(write_to_output(buff,len)==ERR)
+                        {
+                                perror("write_to_output");
+                                exit(EXIT_FAILURE);
+                        }
                 }
         }while(1);
+        */
 
         close(talkSock);
         close(serverSock);
 }
 
+int proposeConnection(char *hostname)
+{
+        uid_t uid = getuid();
+        struct passwd * userInfo = getpwuid(uid);
+        char * username = userInfo->pw_name;
+        char response[MAXLEN];
 
+        printf("Mytalk request from %s@%s. Accept (y/n)? ",username,hostname);
+        fflush(stdout);
 
+        safeRead(STDIN_FILENO,response,MAXLEN);
+        
+        if(approveConnection(response)) return 1;
+        return 0;
+}
+
+int approveConnection(char *response)
+{
+        
+        if(response[0]=='y' && response[1]=='\n') return 1;
+
+        if((response[0]=='y' || response[0]=='Y') 
+           && (response[1]=='e' || response[1]=='E')
+           && (response[2]=='s' || response[1]=='S')
+           && (response[3]=='\n')) return 1;
+
+        return 0;
+}

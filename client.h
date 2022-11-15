@@ -1,1 +1,1 @@
-void client();
+void client(char *);

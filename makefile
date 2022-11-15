@@ -4,7 +4,7 @@ INCLUDE = ~pn-cs357/Given/Talk/include
 LDFLAGS = -g -pedantic -Wall -Werror
 LIBDIRS = ~pn-cs357/Given/Talk/lib64
 LIBS = -ltalk -lncurses
-OBJS =  mytalk.o server.o client.o safeSys.o
+OBJS =  mytalk.o server.o client.o safeIO.o
 
 mytalk: $(OBJS)
 	$(CC) $(LDFLAGS) -o mytalk $(OBJS) -L $(LIBDIRS) $(LIBS) 
@@ -18,8 +18,8 @@ client.o: client.c
 server.o: server.c
 	$(CC) $(CFLAGS) $(INCLUDE) server.c
 
-safeSys.o: safeSys.c
-	$(CC) $(CFLAGS) $(INCLUDE) safeSys.c
+safeIO.o: safeIO.c
+	$(CC) $(CFLAGS) $(INCLUDE) safeIO.c
 
 clean:	
 	rm -f *.o

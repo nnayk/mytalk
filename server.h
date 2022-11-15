@@ -1,1 +1,1 @@
-void server();
+void server(char *);
