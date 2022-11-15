@@ -37,6 +37,7 @@ void client(char *hostname)
 {
         struct sockaddr_in sa;
         struct hostent *hostent;
+        ssize_t len;
         /*char *message = "Hi server\n";*/
         char buff[MAXLEN+1]={0};
         int clientSock;
@@ -65,17 +66,18 @@ void client(char *hostname)
         safeConnect(clientSock,(struct sockaddr *)&sa,sizeof(sa));
 
         printf("Waiting for response from %s.\n",hostname);
-        safeRecv(clientSock,buff,sizeof(buff),0);
+        len = safeRecv(clientSock,buff,sizeof(buff),0);
+        buff[len]='\0';
         if(strcmp("ok",buff))
         {
                 printf("%s declined connection\n",hostname);
                 close(clientSock);
                 return;
         }
-        
+
         if(!(options & N_OPT)) start_windowing();
         
-        communicate(fds,clientSock,buff);
+        communicate(clientSock,buff);
         
         /*
         len = safeSend(clientSock,message,strlen(message),0);

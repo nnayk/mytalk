@@ -167,7 +167,6 @@ void communicate(int sockd,char *buff)
                                         exit(EXIT_FAILURE);
                                 }
                                 len = safeSend(sockd,buff,len,0);
-                                printf("SENDING %s\n",buff);
                                 if(options & N_OPT) break;
                         }
                         
@@ -177,13 +176,13 @@ void communicate(int sockd,char *buff)
                                 buff[1]='\0';
                                 safeSend(sockd,buff,strlen(buff),0);
                                 if(!(options & N_OPT)) stop_windowing();
+                                else printf("%s","\n");
                                 break;
                         }
                 }
 
                 if(fds[REMOTE].revents & POLLIN)
                 {
-                        printf("RECEIVED %s\n",buff);
                         len = safeRecv(sockd,buff,sizeof(buff),0);
                         if(!len)
                         {
@@ -198,6 +197,5 @@ void communicate(int sockd,char *buff)
                                 exit(EXIT_FAILURE);
                         }
                 }
-                printf("EO LOOP\n");
         }while(1);
 }

@@ -30,6 +30,7 @@
 /* function prototypes */
 int proposeConnection();
 int approveConnection(char *);
+int readConnection();
 
 /* global vars, if any */
 extern int port;
@@ -41,7 +42,7 @@ void server(char *hostname)
         struct sockaddr_in sa;
         int serverSock, talkSock;
         char buff[MAXLEN+1]={0};
-        int connRequest = 1;
+        int connRequest;
         /*char *message = "Hello client\n";*/
         struct pollfd fds[REMOTE+1];
         fds[LOCAL].fd = STDIN_FILENO;
@@ -60,7 +61,11 @@ void server(char *hostname)
         safeListen(serverSock,DEFAULT_BACKLOG);
 
         talkSock = safeAccept(serverSock,NULL,NULL);
-        if(!(options & A_OPT)) connRequest = proposeConnection(hostname);
+        connRequest = proposeConnection(hostname);
+        if(options & A_OPT)
+        {
+                printf("%s ","Accepting (opt_accept)\n");
+        }
 
         if(connRequest)
         {
@@ -79,6 +84,7 @@ void server(char *hostname)
         }
 
         safeSend(talkSock,buff,strlen(buff),0);
+        printf("SENT %s\n",buff);
 
         if(!connRequest)
         {
@@ -89,7 +95,7 @@ void server(char *hostname)
 
         fds[REMOTE].fd = talkSock;
         
-        communicate(fds,talkSock,buff);
+        communicate(talkSock,buff);
         /*
         do
         {
@@ -154,11 +160,17 @@ int proposeConnection(char *hostname)
         uid_t uid = getuid();
         struct passwd * userInfo = getpwuid(uid);
         char * username = userInfo->pw_name;
-        char response[MAXLEN];
 
         printf("Mytalk request from %s@%s. Accept (y/n)? ",username,hostname);
         fflush(stdout);
 
+        if(!(options & A_OPT)) return readConnection();
+        return 1;
+}
+
+int readConnection()
+{
+        char response[MAXLEN];
         safeRead(STDIN_FILENO,response,MAXLEN);
         
         if(approveConnection(response)) return 1;

@@ -21,10 +21,11 @@
 
 /* function prototypes */
 void usage();
+void displayOptions(char *);
 
 /* global vars, if any */
 uint8_t options; /* contains a bitwise or of given options */
-char *host; /*input hostname*/
+char *host="(none)"; /*input hostname*/
 short port; /* input port */
 int MODE = 0; /* 0 if in client mode (default), 1 for server mode */
 
@@ -37,10 +38,12 @@ int main (int argc, char * argv[])
        extern int optind; 
 
        char * errptr; /* used when determining desired mode */
+       char *user; /* whether client or server is running */
 
        
        /*get first option */
        int option = getopt(argc,argv,"vaN");
+       
         
        /* parse options */
        while(option != -1) 
@@ -74,21 +77,34 @@ int main (int argc, char * argv[])
        {
                 usage();
        }
+       
+       printf("OPTIND = %d %s\n",optind,argv[optind]);
+       strtol(argv[optind],&errptr,DECIMAL); /* try to grab port number */
+       if(*errptr) 
+       {
+               user = "client";
+               port = strtol(argv[optind+1],NULL,DECIMAL);
+       }
+       else 
+       {
+               user = "server";
+               port = strtol(argv[optind],NULL,DECIMAL);
+       }
 
-       strtol(argv[optind],&errptr,DECIMAL);
+       if(options & V_OPT) displayOptions(user);
+
        
        if(*errptr)        
        {
                MODE = 1;
                host = argv[optind];
-               port = strtol(argv[optind+1],NULL,DECIMAL);
-               client(argv[1]);
+               printf("PORT = %d hostname = %s\n",port,host);
+               client(argv[optind]);
        }
 
        else
        {
-               port = strtol(argv[optind],NULL,DECIMAL);
-               server(argv[1]);     
+               server(argv[optind]);     
        }
        
        return 0;
@@ -101,4 +117,21 @@ void usage()
         exit(EXIT_FAILURE);
 }
 
+void displayOptions(char *user)
+{
+        int verbose=0;
+        int accept = 0;
+        int windows = 0;
 
+        if(options & V_OPT) verbose = 1;
+        if(options & A_OPT) accept  = 1;
+        if(options & N_OPT) windows = 1;
+        
+        printf("Options:\n");
+        printf("  %s opt_verbose = %d\n","int",verbose);
+        printf("  talkmode opt_mode = %s\n",user);
+        printf("  int opt_port = %d\n",port);
+        printf("  char *opt_host = %s\n",host);
+        printf("  int opt_accept = %d\n",accept);
+        printf("  int opt_windows = %d\n",windows);
+}

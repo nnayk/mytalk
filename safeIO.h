@@ -9,4 +9,4 @@ ssize_t safeRead(int,void *,size_t);
 ssize_t safeWrite(int, const void *, size_t);
 void terminateMsg();
 void safeBind(int, const struct sockaddr *,socklen_t);
-void communicate(struct pollfd *,int,char *);
+void communicate(int,char *);
